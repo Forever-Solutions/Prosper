@@ -1,0 +1,46 @@
+:root {
+  --prosper-ink: #14231f;
+  --prosper-paper: #faf8f4;
+  --prosper-accent: #2f6b4f;
+  --prosper-muted: #6b7570;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--prosper-paper);
+  color: var(--prosper-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+a { color: var(--prosper-accent); }
+
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.7rem 1.25rem;
+  border-radius: 8px;
+  background: var(--prosper-accent);
+  color: white;
+  text-decoration: none;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.field {
+  display: block;
+  width: 100%;
+  padding: 0.7rem;
+  margin: 0.4rem 0 1rem;
+  border: 1px solid #d7d2c8;
+  border-radius: 8px;
+  font-size: 1rem;
+}
