@@ -18,6 +18,13 @@ Full schema definition: `supabase/migrations/`. Canonical source:
 | 026 | functions | ownership/role helpers + get_current_builder/get_builder_context/create_context_event + handle_new_user |
 | 027 | rls | RLS policies for every table + column-protection triggers |
 | 028 | seed | demo-only partners/opportunities, clearly marked |
+| 029-031 | function hardening | closes an ID-substitution hole found live by the security advisor; see docs/decisions.md D-005 |
+
+**Status: migrations 001-031 have been applied to the live "Prosper" Supabase project**
+(project ref `blypbjnccbgjgigljjkm`) and verified via `list_tables` (all 20 tables present,
+`rls_enabled: true` on every one) and `get_advisors` (security advisor clean except one
+accepted, intentional residual — see D-005). This is the first component of this scaffold
+that has been verified against a real, live database rather than only reviewed as SQL text.
 
 ## RLS test matrix — NOT YET RUN
 

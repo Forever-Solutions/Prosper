@@ -44,6 +44,59 @@ and role helper functions, so functions must be created first). See
 
 ---
 
+### D-005 — Function EXECUTE grants hardened after live security-advisor findings (029-031)
+
+**Status:** resolved, verified against the live "Prosper" Supabase project.
+
+After applying 001-028 to the real project, `mcp__Supabase__get_advisors` (security) flagged
+all 13 `SECURITY DEFINER` functions as callable directly via PostgREST RPC
+(`/rest/v1/rpc/<function>`) by `anon` and/or `authenticated`. One of these,
+`create_context_event(p_builder_id uuid, ...)`, was a real vulnerability: it took a
+client-supplied `builder_id` with no check that the caller owned it, so any authenticated
+user could have inserted a fake context event into a different Builder's history — exactly
+the ID-substitution class of attack Section 62 of the Supabase spec exists to catch.
+
+Three corrective migrations were needed, in order, because of two Postgres/Supabase
+subtleties discovered live rather than anticipated in advance:
+
+1. **029** revoked EXECUTE on the 5 client-facing-risk functions
+   (`create_context_event`, and the 3 `enforce_*` trigger functions, plus `handle_new_user`)
+   from `anon, authenticated` explicitly. This was necessary but the advisor still showed
+   all 13 findings unchanged immediately afterward.
+2. **030** revoked EXECUTE from `PUBLIC` on those same 5, believing the leftover grant was
+   the Postgres default `PUBLIC` privilege every new function gets. This turned out to be
+   the wrong target for the 8 remaining "safe" helpers (see next point) but did clear the
+   5 risky ones once the advisor cache caught up.
+3. **031**, after inspecting `pg_proc.proacl` directly instead of trusting the advisor's
+   cache: **Supabase applies `ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT EXECUTE ON
+   FUNCTIONS TO anon, authenticated` at function-creation time** — a direct per-role grant,
+   not a `PUBLIC` grant. Revoking from `PUBLIC` never touches it. 031 revoked EXECUTE from
+   `anon` specifically on the 8 self-scoping helpers
+   (`current_profile_id`, `current_builder_id`, `has_role`, `is_admin`,
+   `is_reviewer_or_admin`, `is_opportunity_staff`, `get_current_builder`,
+   `get_builder_context`), leaving `authenticated` in place since RLS policies call these
+   functions while evaluating as that role — revoking it there would break every policy
+   that uses them.
+
+**Final verified state** (via direct `pg_proc.proacl` inspection, not just the advisor):
+the 5 risky functions have execute restricted to `postgres`/`service_role` only; the 8
+helpers have execute restricted to `authenticated`/`service_role` (no `anon`).
+
+**Accepted residual advisor warning:** `get_advisors` still flags the 8 helpers as
+"callable by `authenticated`." This is intentional, not a gap — RLS policy evaluation runs
+as `authenticated` and must be able to call them, and none of the 8 take a client-supplied
+ID or return another user's data; each resolves only `auth.uid()`'s own state. Do not
+"fix" this warning by revoking `authenticated` access — doing so will break RLS on every
+table whose policies reference these functions.
+
+**Lesson for future migrations in this repo:** when locking down a newly-created
+function's default grants, revoke from `anon` and `authenticated` explicitly — never
+assume `revoke ... from public` covers Supabase's default per-role grants, and verify
+against `pg_proc.proacl` rather than relying solely on the advisor tool immediately after
+a change (it appears to have a short cache lag).
+
+---
+
 ### D-002 — Constraint status transitions and skill self-verification enforced by triggers, not application code alone
 
 **Status:** resolved, flagged for review.
